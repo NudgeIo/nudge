@@ -8,13 +8,30 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model Channel {
+model Creator {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  channelName      String
   channelId String   @unique
-  name      String
-  thumnailUrl String @default("")
-  avatarUrl   String @default("")
+  /// From Youtube API
+  customUrl String? @unique 
+  channelAvatar String @default("")
+  channelBanner   String @default("")
+  channelDescription String @default("")
+  slug String @unique
+
+  YoutubeVideos YoutubeVideos[]
+}
+
+model YoutubeVideos {
+  videoId String @id
+  videoTitle String
+  videoDescription String
+  videoThumbnail String
+  videoPublishedAt DateTime
+
+  creator Creator @relation(fields: [channelId], references: [channelId])
+  channelId String
 }
 

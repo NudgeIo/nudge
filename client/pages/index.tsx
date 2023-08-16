@@ -1,16 +1,46 @@
 import { useState } from "react";
-
+import { useRouter } from "next/router";
 export default function Home() {
   const [videoUrl, setVideoUrl] = useState('');
+  const router = useRouter()
+  const [errorMessage, setErrorMessage] = useState('')
 
   // on submit
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(videoUrl);
+
+    const createChannel = await fetch("http://localhost:3001/create-channel", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        videoUrl: videoUrl,
+      }),
+    })
+
+    const data = await createChannel.json()
+    console.log(data);
+    
+    if(createChannel.status === 200 || createChannel.status === 201){
+      const slug = data.data.slug
+      console.log(slug);
+      
+      router.push(`/creator/${slug}`)
+    }
+    else if(createChannel.status === 409){
+      setErrorMessage('channel already exists :(')
+    }
+    else{
+      console.log(createChannel);
+      
+      setErrorMessage('something went wrong :(')
+    }
   }
 
   const handleInputChange = (e) => {
     e.preventDefault();
+    setErrorMessage('')
     setVideoUrl(e.target.value)
   }
 
@@ -26,6 +56,7 @@ export default function Home() {
             placeholder="paste your youTube video url here"
             onChange={handleInputChange}
           />
+         {errorMessage && <div className="italic text-red-700 text-xs text-left">{errorMessage}</div>}
           <button 
             className="mt-4 bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded"
             type="submit"
@@ -37,5 +68,5 @@ export default function Home() {
       </div>
     </div>
   </form>
-  );
+  )
 }

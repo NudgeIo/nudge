@@ -8,7 +8,9 @@ const router = Router()
 
 
 router.get('/channel', channelCreation.fetchChannel)
-router.get('/create-channel', channelCreation.createChannel)
+router.post('/create-channel', channelCreation.createChannel)
+
+router.get('/creator/:slug', channelCreation.fetchCreator)
 
 
 export default router

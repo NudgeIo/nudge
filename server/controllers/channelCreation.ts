@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
+import prisma from "../lib/prisma";
 
 interface VideoListItems {
   kind: string;
@@ -48,8 +49,7 @@ interface VideoListResponse {
   };
 }
 
-// for "Content Details" only fetch
-interface ChannelContentDetailsResponse {
+interface ChannelResponse {
   kind: string;
   etag: string;
   pageInfo: {
@@ -67,6 +67,28 @@ interface ChannelContentDetailsResponse {
         uploads: string;
       };
     };
+    brandingSettings: {
+      channel: {
+        title: string;
+        description: string;
+        keywords: string;
+      }
+      image: {
+        bannerExternalUrl: string;
+      }
+    },
+    snippet:{
+      title: string;
+      description: string;
+      thumbnails: {
+        high: {
+          url: string;
+          width: number;
+          height: number;
+        }
+      }
+      customUrl: string;
+    }
   }[];
 }
 
@@ -126,11 +148,31 @@ const channelCreation = {
 
   // TODO: decontructionize this function, add database additions, and add error handling
   createChannel: async (req: Request, res: Response) => {
-    // const {videoUrl} = req.body
-    const videoUrl = "https://www.youtube.com/watch?v=Qn5IpWXWub0";
+    const { videoUrl } = req.body;
+    // const videoUrl = "https://www.youtube.com/watch?v=Qn5IpWXWub0";
     const videoId = videoUrl.split("v=")[1];
-    console.log(process.env.YOUTUBE_API_KEY);
+    // return res.status(200).json({
+    //   id: 'cllcsbi5u0005o0hrldr2rpgr',
+    //   createdAt: new Date('2023-08-15T20:57:15.186Z'),
+    //   updatedAt: new Date('2023-08-15T20:57:15.186Z'),
+    //   channelName: 'braden garland',
+    //   channelId: 'UCbbSc_txoLmjxYXVZ2EweEQ',
+    //   customUrl: '@bradengarland',
+    //   channelAvatar: 'https://yt3.ggpht.com/mOTPqsr5GKUdoyrrP0ExVq-DxB8Q9BXqpT5ole3pj-oCLYQw-FcP562tyGH0f0STqo0P00KS4Sk=s800-c-k-c0x00ffffff-no-rj',
+    //   channelBanner: 'https://yt3.googleusercontent.com/RmXbjqLm6uKKOrnJ_-irhlrq677ay3-hAZusyoMFnlpyTagaIENoB5a9jmMEtoZJVPKpqGu0',
+    //   channelDescription: 'making things',
+    //   slug: 'braden-garland'
+    // });
+  
+    const channelExists = await prisma.youtubeVideos.findUnique({
+      where: {videoId},
+      include: { creator:true}
+    })
+
+    if (channelExists) return res.status(409).send({error:"Channel already exists"})
+
     try {
+
       const video_fetch = await axios.get<VideoListResponse>(
         "https://www.googleapis.com/youtube/v3/videos",
         {
@@ -143,21 +185,23 @@ const channelCreation = {
       )
 
       const channelId = video_fetch.data.items[0].snippet.channelId;
-      const channelTitle = video_fetch.data.items[0].snippet.channelTitle;
-      const channelDescription = video_fetch.data.items[0].snippet.description;
-      const channelThumbnail = video_fetch.data.items[0].snippet.thumbnails.maxres.url;
 
-        
-      const channelContentDetails = await axios.get<ChannelContentDetailsResponse>(
+      const channelContentDetails = await axios.get<ChannelResponse>(
         "https://www.googleapis.com/youtube/v3/channels",
         {
           params: {
-            part: "contentDetails",
+            part: "contentDetails,brandingSettings,snippet",
             id: channelId,
             key: process.env.YOUTUBE_API_KEY,
           }
         }
       )
+
+      const channelName = channelContentDetails.data.items[0].brandingSettings.channel.title;
+      const channelDescription = channelContentDetails.data.items[0].brandingSettings.channel.description;
+      const channelBanner = channelContentDetails.data.items[0].brandingSettings.image.bannerExternalUrl;
+      const channelAvatar = channelContentDetails.data.items[0].snippet.thumbnails.high.url;
+      const channelCustomUrl = channelContentDetails.data.items[0].snippet.customUrl;
 
       const uploadsPlaylistId = channelContentDetails.data.items[0].contentDetails.relatedPlaylists.uploads;
 
@@ -178,32 +222,75 @@ const channelCreation = {
           videoId: item.snippet.resourceId.videoId,
           videoTitle: item.snippet.title,
           videoDescription: item.snippet.description,
-          videoChannelTitle: item.snippet.channelTitle,
-          videoThumbnail: item.snippet.thumbnails.maxres.url,
+          videoThumbnail: item.snippet.thumbnails.maxres?.url ?? item.snippet.thumbnails.high.url,
           videoPublishedAt: item.snippet.publishedAt,
-          videoPosition: item.snippet.position,
-          videoResourceId: item.snippet.resourceId.kind,
-          videoOwnerChannelTitle: item.snippet.videoOwnerChannelTitle,
+          // videoPosition: item.snippet.position,
         }
       })
       
       
       const channelData = {
         channelId,
-        channelTitle,
+        channelName,
         channelDescription,
-        channelThumbnail,
-        uploadsPlaylistId,
+        channelAvatar,
+        channelBanner,
+        channelCustomUrl,
         youtubeVideos
       }
 
-      return res.status(200).send(channelData);
+      const creator = await prisma.creator.create(
+        {
+          data:{
+            channelId,
+            channelName,
+            channelDescription,
+            channelAvatar,
+            channelBanner,
+            customUrl:channelCustomUrl,
+            slug: channelName.replace(/\s+/g, '-').toLowerCase(),
+            YoutubeVideos:{
+              create: youtubeVideos.map((video) => {
+                return {
+                  videoId: video.videoId,
+                  videoTitle: video.videoTitle,
+                  videoDescription: video.videoDescription,
+                  videoThumbnail: video.videoThumbnail,
+                  videoPublishedAt: video.videoPublishedAt,   
+            }})
+            }
+          }
+        }
+      )
+
+      console.log(creator);
+      
+
+
+
+      return res.status(201).send({"data":creator});
+
     } catch (err: any) {
       console.log(err);
       
-      return res.status(400).send(err);
+      return res.status(400).send({ message: "something went wrong :(" });
     }
   },
+
+  fetchCreator: async (req: Request, res: Response) => {
+    console.log(req.params);
+    
+    const { slug } = req.params;
+    console.log(slug);
+    
+    const creator = await prisma.creator.findUnique({
+      where: { slug },
+      include: { YoutubeVideos: true },
+    });
+    
+
+    return res.status(200).send({ data: creator });
+  }
 };
 
 export default channelCreation;

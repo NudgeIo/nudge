@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
 import axios from "axios";
 import prisma from "../lib/prisma";
+import { NextApiRequest, NextApiResponse } from 'next';
 
 interface VideoListItems {
   kind: string;
@@ -39,7 +39,7 @@ interface VideoListItems {
     };
   };
 }
-interface VideoListResponse {
+interface VideoListNextApiResponse {
   kind: string;
   etag: string;
   items: VideoListItems[];
@@ -49,7 +49,7 @@ interface VideoListResponse {
   };
 }
 
-interface ChannelResponse {
+interface ChannelNextApiResponse {
   kind: string;
   etag: string;
   pageInfo: {
@@ -92,7 +92,7 @@ interface ChannelResponse {
   }[];
 }
 
-interface ChannelUploadsResponse {
+interface ChannelUploadsNextApiResponse {
   kind: string;
   etag: string;
   nextPageToken: string;
@@ -140,14 +140,14 @@ interface ChannelUploadsResponse {
 }
 
 const channelCreation = {
-  fetchChannel: async (req: Request, res: Response) => {
-    // const response = await fetch(`/api/channels/${channelId}`)
+  fetchChannel: async (req: NextApiRequest, res: NextApiResponse) => {
+    // const NextApiResponse = await fetch(`/api/channels/${channelId}`)
 
     return res.status(200).json({ message: "hello" });
   },
 
   // TODO: decontructionize this function, add database additions, and add error handling
-  createChannel: async (req: Request, res: Response) => {
+  createChannel: async (req: NextApiRequest, res: NextApiResponse) => {
     const { videoUrl } = req.body;
     // const videoUrl = "https://www.youtube.com/watch?v=Qn5IpWXWub0";
     const videoId = videoUrl.split("v=")[1];
@@ -173,7 +173,7 @@ const channelCreation = {
 
     try {
 
-      const video_fetch = await axios.get<VideoListResponse>(
+      const video_fetch = await axios.get<VideoListNextApiResponse>(
         "https://www.googleapis.com/youtube/v3/videos",
         {
           params: {
@@ -186,7 +186,7 @@ const channelCreation = {
 
       const channelId = video_fetch.data.items[0].snippet.channelId;
 
-      const channelContentDetails = await axios.get<ChannelResponse>(
+      const channelContentDetails = await axios.get<ChannelNextApiResponse>(
         "https://www.googleapis.com/youtube/v3/channels",
         {
           params: {
@@ -205,7 +205,7 @@ const channelCreation = {
 
       const uploadsPlaylistId = channelContentDetails.data.items[0].contentDetails.relatedPlaylists.uploads;
 
-      const channelUploads = await axios.get<ChannelUploadsResponse>(
+      const channelUploads = await axios.get<ChannelUploadsNextApiResponse>(
         "https://www.googleapis.com/youtube/v3/playlistItems",
         {
           params: {
@@ -277,16 +277,18 @@ const channelCreation = {
     }
   },
 
-  fetchCreator: async (req: Request, res: Response) => {
-    console.log(req.params);
+  fetchCreator: async (req: NextApiRequest, res: NextApiResponse) => {
+    console.log(req.query);
     
-    const { slug } = req.params;
-    console.log(slug);
+    const slug = req.query.slug as string
+    console.log(slug)
     
     const creator = await prisma.creator.findUnique({
       where: { slug },
       include: { YoutubeVideos: true },
     });
+
+    if(!creator) return res.status(404).send({error:"Creator not found"})
     
 
     return res.status(200).send({ data: creator });

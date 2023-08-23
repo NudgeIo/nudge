@@ -9,7 +9,7 @@ export default function Home() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const createChannel = await fetch("http://localhost:3000/api/create", {
+    const createChannel = await fetch("http://localhost:3000/api/creator", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

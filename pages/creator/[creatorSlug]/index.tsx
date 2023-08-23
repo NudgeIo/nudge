@@ -3,6 +3,9 @@ import { useRouter } from "next/router";
 import { ParsedUrlQuery } from "querystring";
 import { GetServerSidePropsContext } from 'next';
 import { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, PromiseLikeOfReactNode, Key } from "react";
+// import SignInButton from "@/components/googleButton";
+import { signIn, signOut, useSession } from 'next-auth/react';
+
 
 interface CreatorProfileProps {
   creator: {
@@ -21,6 +24,8 @@ const CreatorProfile: React.FC<CreatorProfileProps> = ({ creator }) => {
   const router = useRouter();
   const { query } = router;
   const channelSlug = query.channelSlug;
+  const { data } = useSession();
+  const isSignedIn = !!data?.user;
 
   if (!creator) {
     return <div>loading...</div>;
@@ -28,15 +33,30 @@ const CreatorProfile: React.FC<CreatorProfileProps> = ({ creator }) => {
 
   return (
     <div className="bg-gray-100 min-h-screen">
-      <div className="flex justify-end">
+      <div className="flex justify-end absolute m-4 bg-white text-black">
         {/* Sign in google here */}
-        <button className="absolute m-4 bg-white text-black font-bold p-3 px-12 rounded-3xl">
-          Sign in
+         <div>
+      {isSignedIn ? (
+        <button
+          onClick={() => signOut()}
+          className={`text-black font-bold p-3 px-12 rounded-3xl`}
+        >
+          Sign out
         </button>
+      ) : (
+        <button
+          onClick={() =>
+            signIn("google")
+          }
+        >
+          Sign in with Google
+        </button>
+      )}
+    </div>
       </div>
       <div
         className="bg-cover bg-center h-56"
-        style={{ backgroundImage: `url(${creator.channelBanner})` }}
+        style={{ backgroundImage: `url(${creator.channelBanner}=w2120-fcrop64=1,00000000ffffffff-k-c0xffffffff-no-nd-rj)` }}
       />
       <div className="flex justify-center -mt-24">
         <img

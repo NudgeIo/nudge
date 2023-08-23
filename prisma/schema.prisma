@@ -22,6 +22,7 @@ model Creator {
   slug String @unique
 
   YoutubeVideos YoutubeVideos[]
+  CreatorFan CreatorFan[]
 }
 
 model YoutubeVideos {
@@ -33,5 +34,35 @@ model YoutubeVideos {
 
   creator Creator @relation(fields: [channelId], references: [channelId])
   channelId String
+}
+
+
+enum Provider {
+  GOOGLE
+}
+model NudgeUser {
+  id       String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name     String?
+
+  email    String? @unique
+  provider Provider
+  avatarUrl String?
+
+  CreatorFan CreatorFan[]
+}
+
+model CreatorFan {
+  id       String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  credits Int @default(0)
+
+  creator Creator @relation(fields: [creatorId], references: [id])
+  creatorId String
+
+  nudgeUser NudgeUser @relation(fields: [nudgeUserId], references: [id])
+  nudgeUserId String
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import prisma from '../lib/prisma';
 import { Provider } from '@prisma/client';
 
+
 export default NextAuth({
   providers: [
     GoogleProvider({
@@ -17,8 +18,18 @@ export default NextAuth({
       async signIn(params) {
         const { user, account, profile } = params
         if(!user) return false;
+
+        let nudgeUser = await prisma.nudgeUser.findUnique({
+          where: {email: user.email as string}
+        })
+
+        console.log("User exists");
         
-        const nudgeUser = prisma.nudgeUser.create(
+
+        if(nudgeUser) return true;
+
+        
+        nudgeUser = await prisma.nudgeUser.create(
           {
             data:{
               email: user.email,
@@ -28,19 +39,26 @@ export default NextAuth({
             }
           }
         )
+
+        console.log("created nudge user", nudgeUser);
+        
         
         return true;
       },
 
       async session(params) {
-        console.log("session params",params);
-        
-        const {session,token} = params
-        console.log("Session",session);
-        console.log("UserOrToken",token);
+
+        const { session, token: jwtToken } = params;
+
+        (session.user as any).token = jwtToken.jwt;
+
+        console.log("Session", session);
+        console.log("UserOrToken", jwtToken);
 
         return session;
       },
+
+
       async jwt(params) {
         console.log("params",params);
         

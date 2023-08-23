@@ -2,9 +2,12 @@ import { IncomingMessage, ServerResponse } from "http";
 import { useRouter } from "next/router";
 import { ParsedUrlQuery } from "querystring";
 import { GetServerSidePropsContext } from 'next';
-import { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, PromiseLikeOfReactNode, Key } from "react";
+import { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, PromiseLikeOfReactNode, Key, useEffect, useState } from "react";
 // import SignInButton from "@/components/googleButton";
 import { signIn, signOut, useSession } from 'next-auth/react';
+import { getSession } from "next-auth/react";
+import axios from "axios";
+
 
 
 interface CreatorProfileProps {
@@ -24,8 +27,20 @@ const CreatorProfile: React.FC<CreatorProfileProps> = ({ creator }) => {
   const router = useRouter();
   const { query } = router;
   const channelSlug = query.channelSlug;
-  const { data } = useSession();
-  const isSignedIn = !!data?.user;
+  const { data: nudgeUser, status, update } = useSession();
+  const [isAuthenticated,setIsAuthenticated] = useState(false);
+
+  useEffect(() => { 
+    async function fetchData() {
+      if(status === "authenticated"){
+        const data = await axios.get(`http://localhost:3000/api/fan`);
+        console.log(data);
+      }
+    }
+    fetchData();
+  }, [status]);
+
+  const isSignedIn = !!nudgeUser?.user;
 
   if (!creator) {
     return <div>loading...</div>;
@@ -43,7 +58,9 @@ const CreatorProfile: React.FC<CreatorProfileProps> = ({ creator }) => {
         >
           Sign out
         </button>
-      ) : (
+      ) : 
+      
+      (
         <button
           onClick={() =>
             signIn("google")

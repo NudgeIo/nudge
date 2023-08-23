@@ -199,7 +199,7 @@ const channelCreation = {
 
       const channelName = channelContentDetails.data.items[0].brandingSettings.channel.title;
       const channelDescription = channelContentDetails.data.items[0].brandingSettings.channel.description;
-      const channelBanner = channelContentDetails.data.items[0].brandingSettings.image.bannerExternalUrl;
+      const channelBanner = channelContentDetails.data.items[0].brandingSettings.image?.bannerExternalUrl;
       const channelAvatar = channelContentDetails.data.items[0].snippet.thumbnails.high.url;
       const channelCustomUrl = channelContentDetails.data.items[0].snippet.customUrl;
 
@@ -280,7 +280,7 @@ const channelCreation = {
   fetchCreator: async (req: NextApiRequest, res: NextApiResponse) => {
     console.log(req.query);
     
-    const slug = req.query.slug as string
+    const slug = req.query.creatorSlug as string
     console.log(slug)
     
     const creator = await prisma.creator.findUnique({

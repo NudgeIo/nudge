@@ -19,7 +19,10 @@ module.exports = {
           "on-primary": 'rgba(246, 243, 213, 1)',
           "primary-alt": 'rgba(246, 243, 213, 1)',
           "primary-alt-hover":'rgba(243, 238, 196, 1)',
-          "yellow-dark-hover": 'rgba(102, 92, 0, 1)'
+          "yellow-dark-hover": 'rgba(102, 92, 0, 1)',
+          tint:{
+            1: 'rgba(253, 224, 71, 1)',
+          }
         }
       }
     },

@@ -8,44 +8,39 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+/// Creator/Youtuber, everything is fetched from the Youtube API
 model Creator {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  channelName      String
-  channelId String   @unique
-  /// From Youtube API
-  customUrl String? @unique 
-  channelAvatar String @default("")
-  channelBanner   String @default("")
-  channelDescription String @default("")
-  slug String @unique
-
-  YoutubeVideos YoutubeVideos[]
+  id                String   @id @default(cuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  channelName       String
+  channelId         String   @unique
+  // Custom URL from the Youtube Website
+  // e.g. youtube.com/@edison
+  customUrl         String?  @unique 
+  channelAvatar     String   @default("")
+  channelBanner     String   @default("")
+  channelDescription String   @default("")
+  // The channel's URL slug for Nudge
+  slug              String   @unique
+  
+  // Quests associated with this creator
+  Quests     Quest[]
+  // Fans associated with this creator
   CreatorFan CreatorFan[]
 }
-
-model YoutubeVideos {
-  videoId String @id
-  videoTitle String
-  videoDescription String
-  videoThumbnail String
-  videoPublishedAt DateTime
-
-  creator Creator @relation(fields: [channelId], references: [channelId])
-  channelId String
-}
-
 
 enum Provider {
   GOOGLE
 }
+
+/// User that has signed up for Nudge
+/// Universal for all the Creator Channels
 model NudgeUser {
   id       String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   name     String?
-
   email    String? @unique
   provider Provider
   avatarUrl String?
@@ -53,16 +48,77 @@ model NudgeUser {
   CreatorFan CreatorFan[]
 }
 
+/// The Fan of a Creator, interacted with this Creator's channel
 model CreatorFan {
   id       String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  credits Int @default(0)
+  // Credits that the fan has earned through quests
+  creatorCash Int @default(0)
 
   creator Creator @relation(fields: [creatorId], references: [id])
   creatorId String
 
   nudgeUser NudgeUser @relation(fields: [nudgeUserId], references: [id])
   nudgeUserId String
+
+  // Unique Referrer ID for this certain creator
+  referrerId String?
+  referrer   CreatorFan? @relation("FanReferrals", fields: [referrerId], references: [id])
+  referred   CreatorFan[] @relation("FanReferrals")
+  
+  QuestStatus QuestStatus[]
 }
 
+/// Quests that the Creator has created
+// e.g. Youtube Videos, Referral, Subscribe
+model Quest {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  isActive         Boolean @default(true)
+  videoThumbnail   String?
+  videoPublishedAt DateTime?
+  videoId          String?
+
+  creatorId        String
+  creator          Creator @relation(fields: [creatorId], references: [id])
+  
+  Milestones       Milestone[]
+  QuestStatus      QuestStatus[]
+}
+
+
+enum MilestoneType {
+  LIKE
+  COMMENT
+  // referral
+  NUDGE 
+  SUBSCRIBE
+}
+model Milestone {
+  id          String @id @default(cuid())
+  description String
+  type        MilestoneType
+  // Creator cashed earn on verification
+  reward      Int
+  questId     String
+  quest       Quest @relation(fields: [questId], references: [id])
+}
+
+enum QuestProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+/// Quest Status for each Fan
+model QuestStatus {
+  id          String    @id @default(cuid())
+  creatorFanId String
+  creatorFan  CreatorFan @relation(fields: [creatorFanId], references: [id])
+  questId     String
+  quest       Quest     @relation(fields: [questId], references: [id])
+  status      QuestProgressStatus
+  completedAt DateTime?
+}

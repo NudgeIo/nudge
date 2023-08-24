@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getToken } from "next-auth/jwt"
 import { getSession } from "next-auth/react";
-import prisma from "./lib/prisma";
+import prisma from "../../lib/prisma";
 
 
 

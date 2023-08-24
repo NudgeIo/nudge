@@ -1,6 +1,7 @@
 import axios from "axios";
-import prisma from "../lib/prisma";
+import prisma from "../../../lib/prisma";
 import { NextApiRequest, NextApiResponse } from 'next';
+import { MilestoneType } from "@prisma/client";
 
 interface VideoListItems {
   kind: string;
@@ -48,7 +49,6 @@ interface VideoListNextApiResponse {
     resultsPerPage: number;
   };
 }
-
 interface ChannelNextApiResponse {
   kind: string;
   etag: string;
@@ -140,39 +140,32 @@ interface ChannelUploadsNextApiResponse {
 }
 
 const channelCreation = {
-  fetchChannel: async (req: NextApiRequest, res: NextApiResponse) => {
-    // const NextApiResponse = await fetch(`/api/channels/${channelId}`)
 
-    return res.status(200).json({ message: "hello" });
+  /// Verify that the User is actually the creator of the channel
+  // TODO: To be implemented
+  verifyCreator: async (req: NextApiRequest, res: NextApiResponse) => {
+    // api call to fetch the channel id, save it,
+    // get channel list, filter for videos posted by themselves
+    // if the video id matches the video id of the video they are trying to add, then they are the creator
+    return res.status(200).json({ message: "TODO" });
   },
 
   // TODO: decontructionize this function, add database additions, and add error handling
-  createChannel: async (req: NextApiRequest, res: NextApiResponse) => {
+  createCreator: async (req: NextApiRequest, res: NextApiResponse) => {
     const { videoUrl } = req.body;
-    // const videoUrl = "https://www.youtube.com/watch?v=Qn5IpWXWub0";
+    // const videoUrl = "https://www.youtube.com/watch?v=Qn5IpWXWub0"
     const videoId = videoUrl.split("v=")[1];
-    // return res.status(200).json({
-    //   id: 'cllcsbi5u0005o0hrldr2rpgr',
-    //   createdAt: new Date('2023-08-15T20:57:15.186Z'),
-    //   updatedAt: new Date('2023-08-15T20:57:15.186Z'),
-    //   channelName: 'braden garland',
-    //   channelId: 'UCbbSc_txoLmjxYXVZ2EweEQ',
-    //   customUrl: '@bradengarland',
-    //   channelAvatar: 'https://yt3.ggpht.com/mOTPqsr5GKUdoyrrP0ExVq-DxB8Q9BXqpT5ole3pj-oCLYQw-FcP562tyGH0f0STqo0P00KS4Sk=s800-c-k-c0x00ffffff-no-rj',
-    //   channelBanner: 'https://yt3.googleusercontent.com/RmXbjqLm6uKKOrnJ_-irhlrq677ay3-hAZusyoMFnlpyTagaIENoB5a9jmMEtoZJVPKpqGu0',
-    //   channelDescription: 'making things',
-    //   slug: 'braden-garland'
-    // });
   
-    const channelExists = await prisma.youtubeVideos.findUnique({
-      where: {videoId},
-      include: { creator:true}
-    })
+    // const channelExists = await prisma.youtubeVideos.findUnique({
+    //   where: {videoId},
+    //   include: { creator:true}
+    // })
 
-    if (channelExists) return res.status(409).send({error:"Channel already exists"})
+    // if (channelExists) return res.status(409).send({error:"Channel already exists"})
 
+
+    // create the creator first
     try {
-
       const video_fetch = await axios.get<VideoListNextApiResponse>(
         "https://www.googleapis.com/youtube/v3/videos",
         {
@@ -197,13 +190,34 @@ const channelCreation = {
         }
       )
 
-      const channelName = channelContentDetails.data.items[0].brandingSettings.channel.title;
-      const channelDescription = channelContentDetails.data.items[0].brandingSettings.channel.description;
-      const channelBanner = channelContentDetails.data.items[0].brandingSettings.image?.bannerExternalUrl;
-      const channelAvatar = channelContentDetails.data.items[0].snippet.thumbnails.high.url;
-      const channelCustomUrl = channelContentDetails.data.items[0].snippet.customUrl;
+      const channelData = channelContentDetails.data.items[0];
+      const channelName = channelData.brandingSettings.channel.title;
+      const channelDescription = channelData.brandingSettings.channel.description;
+      const channelBanner = channelData.brandingSettings.image?.bannerExternalUrl+"=w2276-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj" ?? undefined;
+      const channelAvatar = channelData.snippet.thumbnails.high.url;
+      const channelCustomUrl = channelData.snippet.customUrl;
+      
+      // now create the creator
+      
+      const creator = await prisma.creator.create(
+        {
+          data:{
+            channelId,
+            channelName,
+            channelDescription,
+            channelAvatar,
+            channelBanner,
+            customUrl:channelCustomUrl,
+            slug: channelName.replace(/\s+/g, '-').toLowerCase(),
+          }
+        }
+      )
 
-      const uploadsPlaylistId = channelContentDetails.data.items[0].contentDetails.relatedPlaylists.uploads;
+      console.log("This is the creator",creator);
+      
+
+      // Creation of quests and milestones
+      const uploadsPlaylistId = channelData.contentDetails.relatedPlaylists.uploads;
 
       const channelUploads = await axios.get<ChannelUploadsNextApiResponse>(
         "https://www.googleapis.com/youtube/v3/playlistItems",
@@ -216,58 +230,39 @@ const channelCreation = {
           }
         }
       )
-
-      const youtubeVideos = channelUploads.data.items.map((item) => {
-        return {
-          videoId: item.snippet.resourceId.videoId,
-          videoTitle: item.snippet.title,
-          videoDescription: item.snippet.description,
-          videoThumbnail: item.snippet.thumbnails.maxres?.url ?? item.snippet.thumbnails.high.url,
-          videoPublishedAt: item.snippet.publishedAt,
-          // videoPosition: item.snippet.position,
-        }
-      })
+      const questsData = channelUploads.data.items.map(async item => {
+        const quest = await prisma.quest.create({
+          data: {
+            creatorId: creator.id,
+            videoId: item.snippet.resourceId.videoId,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            videoThumbnail: item.snippet.thumbnails.maxres?.url ?? item.snippet.thumbnails.high.url,
+            videoPublishedAt: item.snippet.publishedAt,
+            Milestones: {
+              create: [
+                {
+                  type: MilestoneType.LIKE,
+                  reward: 5,
+                  description: "Like our video",
+                },
+                {
+                  type: MilestoneType.COMMENT,
+                  reward: 10,
+                  description: "Comment on our video",
+                },
+              ]
+            },
+          },
+        });
       
+        return quest;
+      });
       
-      const channelData = {
-        channelId,
-        channelName,
-        channelDescription,
-        channelAvatar,
-        channelBanner,
-        channelCustomUrl,
-        youtubeVideos
-      }
-
-      const creator = await prisma.creator.create(
-        {
-          data:{
-            channelId,
-            channelName,
-            channelDescription,
-            channelAvatar,
-            channelBanner,
-            customUrl:channelCustomUrl,
-            slug: channelName.replace(/\s+/g, '-').toLowerCase(),
-            YoutubeVideos:{
-              create: youtubeVideos.map((video) => {
-                return {
-                  videoId: video.videoId,
-                  videoTitle: video.videoTitle,
-                  videoDescription: video.videoDescription,
-                  videoThumbnail: video.videoThumbnail,
-                  videoPublishedAt: video.videoPublishedAt,   
-            }})
-            }
-          }
-        }
-      )
-
-      console.log(creator);
+      const quests = await Promise.all(questsData);
       
-
-
-
+      console.log("This the quests and milestones", quests);
+      
       return res.status(201).send({"data":creator});
 
     } catch (err: any) {

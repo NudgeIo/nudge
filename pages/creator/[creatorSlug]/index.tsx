@@ -7,129 +7,164 @@ import { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, PromiseLik
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { getSession } from "next-auth/react";
 import axios from "axios";
+import { NudgeUser } from "@prisma/client";
+// import { Quest } from "@prisma/client";
 
 
+export interface Creator {
+  id: string;
+  slug: string;
+  channelAvatar: string;
+  channelBanner: string;
+  channelDescription: string;
+  channelId: string;
+  channelName: string;
+  customUrl: string;
 
-interface CreatorProfileProps {
-  creator: {
-    channelBanner: string;
-    channelAvatar: string;
-    channelName: string;
-    channelDescription: string;
-    YoutubeVideos: {
-      videoThumbnail: string;
-      videoTitle: string;
-    }[];
-  };
+  Quests: Quest[];
+}
+export interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  isActive: boolean;
+  videoThumbnail: string;
+  videoPublishedAt: string;
+  videoId: string;
+  creatorId: string;
+  Milestones: Milestone[];
 }
 
-const CreatorProfile: React.FC<CreatorProfileProps> = ({ creator }) => {
+interface Milestone {
+  id: string;
+  description: string;
+  type: 'LIKE' | 'COMMENT';
+  reward: number;
+  questId: string;
+}
+
+const CreatorProfile: React.FC<Creator> = (creator) => {
   const router = useRouter();
   const { query } = router;
-  const channelSlug = query.channelSlug;
-  const { data: nudgeUser, status, update } = useSession();
+  const creatorSlug = query.creatorSlug;
+  const { data: session, status, update } = useSession();
   const [isAuthenticated,setIsAuthenticated] = useState(false);
+  const [nudgeUser, setNudgeUser] = useState<NudgeUser>()
+
+  useEffect(() => {
+    console.log(creator);
+  },[]);
 
   useEffect(() => { 
     async function fetchData() {
-      if(status === "authenticated"){
-        const data = await axios.get(`http://localhost:3000/api/fan`);
+      
+      if(status === "authenticated" && creatorSlug){
+
+        // hacked together, because i put token replacing the user
+        // console.log((session.user as any)?.nudgeUser.id)        
+        const data = await axios.get(`http://localhost:3000/api/creatorFan/`+creatorSlug)
         console.log(data);
+        console.log(data.status);
+        
+        
+        if(data.status === 201 || data.status === 304 || data.status === 200){
+          console.log("got them");
+          
+          const nudgeUser = await data.data.creatorFan
+          console.log("Nudge user",nudgeUser);
+          
+          setNudgeUser(nudgeUser)
+        }
       }
     }
     fetchData();
-  }, [status]);
+  }, [status,creatorSlug]);
 
-  const isSignedIn = !!nudgeUser?.user;
+  const isSignedIn = !!session?.user;
 
-  if (!creator) {
-    return <div>loading...</div>;
+  const handleVerify = async (quest: Quest) =>{
+    console.log(quest);
+    const data = await axios.post('http://localhost:3000/api/verify', {
+      questId: quest.id,
+    },
+
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }
+    )
+
+    if(data.status === 200){
+      console.log(data.data);
+    }
+    
+    
+  }
+
+  const handleSignIn = async() =>{
+    const data = await axios.get('http://localhost:3000/api/signIn');
+    console.log(data);
   }
 
   return (
     <div className="bg-gray-100 min-h-screen">
-      <div className="flex justify-end absolute m-4 bg-white text-black">
-        {/* Sign in google here */}
-         <div>
-      {isSignedIn ? (
-        <button
-          onClick={() => signOut()}
-          className={`text-black font-bold p-3 px-12 rounded-3xl`}
-        >
-          Sign out
-        </button>
-      ) : 
-      
-      (
-        <button
-          onClick={() =>
-            signIn("google")
-          }
-        >
-          Sign in with Google
-        </button>
-      )}
-    </div>
+
+      {/* Sign in google here */}
+      <div className="absolute right-4 m-4 bg-white text-black">
+        <div>
+          {isSignedIn ? (
+            <button
+              onClick={() => signOut()}
+              className={`text-black font-bold p-3 px-12 rounded-3xl`}
+            >
+              Sign out
+            </button>
+          ) : (
+            <button onClick={()=> signIn("google")}>
+              Sign in with Google
+            </button>
+          )}
+        </div>
       </div>
-      <div
-        className="bg-cover bg-center h-56"
-        style={{ backgroundImage: `url(${creator.channelBanner}=w2120-fcrop64=1,00000000ffffffff-k-c0xffffffff-no-nd-rj)` }}
-      />
-      <div className="flex justify-center -mt-24">
-        <img
-          className="h-32 w-32 rounded-full border-4 border-white"
-          src={creator.channelAvatar}
-          alt="Creator's Avatar"
-        />
-      </div>
-      <div className="text-center mt-4 text-2xl font-semibold text-gray-900">
-        {creator.channelName}
-      </div>
-      <div className="text-center text-gray-700">
-        {creator.channelDescription}
-      </div>
-      <div className="mt-12 max-w-2xl mx-auto">
-        {creator.YoutubeVideos.map((video, index) => (
-          <div
-            key={index}
-            className="rounded-lg shadow-lg overflow-hidden mb-8 bg-white flex flex-row"
-          >
-            <div className="flex-shrink-0">
-              <img
-                className="h-48 w-full object-cover"
-                src={video.videoThumbnail}
-                alt="Video thumbnail"
-              />
+
+      <div>
+        {/* Navbar */}
+
+        {/* Channel Header Image */}
+        {/* Channel Info here */}
+
+        {/* Nudge your friends */}
+        {/* Cards for the quests here */}
+        
+        {creator.Quests.map((quest,i) => {
+          return (
+            <div key={i}>
+              {i === 0 && 
+              <div>
+                <div className="text-black">{quest.title}</div>
+                <button onClick={() => handleVerify(quest)}> Check here maybe?</button>
+              </div>}
             </div>
-            <div className="flex-1 p-6 flex flex-col justify-between space-y-4">
-              <a href="#" className="text-center mt-2">
-                <p className="text-xl font-semibold text-black">
-                  {video.videoTitle}
-                </p>
-              </a>
-              <div className="flex flex-col items-center space-y-2">
-                <button
-                  className="py-2 px-4 rounded bg-black text-white"
-                  onClick={() => console.log("Like clicked")}
-                >
-                  Like
-                </button>
-                <button
-                  className="py-2 px-4 rounded bg-gray-400 text-black"
-                  onClick={() => console.log("Comment clicked")}
-                >
-                  Comment
-                </button>
-                <button
-                  className="py-2 px-4 rounded bg-black text-white"
-                  onClick={() => console.log("Subscribe clicked")}
-                >
-                  Subscribe
-                </button>
+          )
+        })}
+
+
+
+        {/* {creator.Quests.map((quest) => {
+          return (
+            <div key={quest.id}>
+              <div>
+                <h1>{quest.title}</h1>
+                <h2>{quest.description}</h2>
+                <h3>{quest.videoId}</h3>
+                <h4>{quest.videoPublishedAt}</h4>
+                <h5>{quest.videoThumbnail}</h5>
+                <h6>{quest.isActive}</h6>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })} */}
       </div>
     </div>
   );
@@ -149,8 +184,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     };
   }
 
-  const data = await response.json();
-  const creator = data.data;
+  const creator = await response.json();
 
-  return { props: { creator } };
+  return { props: creator.creator };
 }

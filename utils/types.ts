@@ -1,3 +1,23 @@
+import { JWT } from "next-auth/jwt";
+
+
+export interface Token extends JWT {
+    nudgeUser: NudgeUser;
+    accessToken: string;
+    iat: number;
+    exp: number;
+    jti: string; 
+  } 
+  
+  interface NudgeUser {
+    id: string;
+    email: string; 
+    name: string;
+    avatarUrl: string;
+    provider: string;
+  }
+
+
 export interface VideoListItems {
     kind: string;
     etag: string;

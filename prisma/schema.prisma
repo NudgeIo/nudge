@@ -16,7 +16,7 @@ model Creator {
   channelName       String
   channelId         String   @unique
   // Custom URL from the Youtube Website
-  // e.g. youtube.com/@edison
+  // e.g. youtube.com/@edison or youtube.com/@pewdiepie
   customUrl         String?  @unique 
   channelAvatar     String   @default("")
   channelBanner     String   @default("")
@@ -68,6 +68,7 @@ model CreatorFan {
   referred   CreatorFan[] @relation("FanReferrals")
   
   QuestStatus QuestStatus[]
+  MilestoneStatus MilestoneStatus[]
 }
 
 /// Quests that the Creator has created
@@ -98,15 +99,26 @@ enum MilestoneType {
 }
 model Milestone {
   id          String @id @default(cuid())
-  description String
+  description String?
   type        MilestoneType
   // Creator cashed earn on verification
   reward      Int
   questId     String
   quest       Quest @relation(fields: [questId], references: [id])
+
+  MilestoneStatus MilestoneStatus[]
+}
+model MilestoneStatus {
+  id               String               @id @default(cuid())
+  status           ProgressStatus
+  creatorFanId     String
+  creatorFan       CreatorFan           @relation(fields: [creatorFanId], references: [id])
+  milestoneId      String
+  milestone        Milestone            @relation(fields: [milestoneId], references: [id])
+  completedAt      DateTime?
 }
 
-enum QuestProgressStatus {
+enum ProgressStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
@@ -119,6 +131,6 @@ model QuestStatus {
   creatorFan  CreatorFan @relation(fields: [creatorFanId], references: [id])
   questId     String
   quest       Quest     @relation(fields: [questId], references: [id])
-  status      QuestProgressStatus
+  status      ProgressStatus
   completedAt DateTime?
 }

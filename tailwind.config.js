@@ -23,7 +23,37 @@ module.exports = {
           tint:{
             1: 'rgba(253, 224, 71, 1)',
           }
+        },
+          surface:{
+            variant: "rgba(239, 241, 246, 1)",
+            60: "rgba(255, 255, 255, 0.6)"
+          },
+        green:{
+          shades:{
+            1: "rgba(22, 163, 74, 1)"
+          },
+          tint:{
+            4: "rgba(240, 253, 244, 1)"
+          }
+        },
+
+        blue:{
+          blue:'rgba(59, 130, 246, 1)'
+        },
+        background:"rgba(245, 245, 245, 1)",
+
+        utility:{
+          outline:"rgba(213, 216, 221, 1)",
+          "disabled-content": "rgba(26, 26, 31, 0.38)",
+          "disabled-background": "rgba(26, 26, 31, 0.12)"
+        },
+
+        input:{
+          text:{
+            dim: "rgba(65, 65, 78, 0.7)"
+          }
         }
+        
       }
     },
   },

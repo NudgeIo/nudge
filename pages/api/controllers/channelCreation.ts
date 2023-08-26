@@ -193,7 +193,7 @@ const channelCreation = {
       const channelData = channelContentDetails.data.items[0];
       const channelName = channelData.brandingSettings.channel.title;
       const channelDescription = channelData.brandingSettings.channel.description;
-      const channelBanner = channelData.brandingSettings.image?.bannerExternalUrl+"=w2276-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj" ?? undefined;
+      const channelBanner = channelData.brandingSettings.image?.bannerExternalUrl+"=w2120-fcrop64=1,00000000ffffffff-k-c0xffffffff-no-nd-rj" ?? undefined;
       const channelAvatar = channelData.snippet.thumbnails.high.url;
       const channelCustomUrl = channelData.snippet.customUrl;
       
@@ -276,17 +276,17 @@ const channelCreation = {
     console.log(req.query);
     
     const slug = req.query.creatorSlug as string
-    console.log(slug)
-    
+
     const creator = await prisma.creator.findUnique({
       where: { slug },
-      include: { YoutubeVideos: true },
+      include: { Quests: { include: { Milestones: true }, take: 8 } },
     });
 
-    if(!creator) return res.status(404).send({error:"Creator not found"})
-    
+    if(!creator){
+      return res.status(404).json({message:"Not found"})
+    }
 
-    return res.status(200).send({ data: creator });
+    return res.status(200).json({ creator });
   }
 };
 

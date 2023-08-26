@@ -32,7 +32,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         onClick={props.onClick}
         className={twMerge(
           'flex',
-          props.hasDropdown ? 'rounded-l-lg' : 'rounded-lg',
+          props.hasDropdown ? 'rounded-l-lg' : '',
           'px-3.5 py-2 w-full text-left text-sm items-center',
           props.className,
           props.disabled && 'opacity-50 cursor-not-allowed',
